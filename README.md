@@ -27,7 +27,7 @@ The concept behind **pic.io** is to bring a professional photo studio experience
 ## 🚀 Guide / How to Use
 
 1. **Upload a Photo:** 
-   Start by dragging and dropping an image (JPG or PNG) into the upload zone on the left sidebar, or click to browse your files.
+   Start by dragging and dropping an image (JPG or PNG) into the upload zone on the left sidebar, or click to browse your Files.
 2. **Select Document Standard:** 
    Choose the required passport photo size from the available international standards.
 3. **Choose Paper Size:** 

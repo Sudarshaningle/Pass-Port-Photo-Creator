@@ -32,12 +32,12 @@
     zone.addEventListener('drop', e => {
         e.preventDefault();
         zone.classList.remove('drag-over');
-        const file = e.dataTransfer.files[0];
+        const file = e.dataTransfer.Files[0];
         if (file && file.type.startsWith('image/')) loadFile(file);
     });
 
     fileInput.addEventListener('change', () => {
-        if (fileInput.files[0]) loadFile(fileInput.files[0]);
+        if (fileInput.Files[0]) loadFile(fileInput.Files[0]);
     });
 
     function loadFile(file) {
