@@ -303,27 +303,44 @@
     let isDragging = false;
     let startX, startY, startCropX, startCropY;
 
-    alignContainer.addEventListener('mousedown', e => {
+    function onDragStart(e) {
         if (e.target.tagName.toLowerCase() === 'input') return; // ignore zoom slider clicks if it was inside
         isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        startX = clientX;
+        startY = clientY;
         startCropX = state.crop.x;
         startCropY = state.crop.y;
-    });
+    }
 
-    window.addEventListener('mousemove', e => {
+    function onDragMove(e) {
         if (!isDragging) return;
-        const dx = (e.clientX - startX) / displayScale;
-        const dy = (e.clientY - startY) / displayScale;
+        // prevent page scrolling while dragging on mobile
+        if (e.cancelable && e.type === 'touchmove') {
+            e.preventDefault();
+        }
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const dx = (clientX - startX) / displayScale;
+        const dy = (clientY - startY) / displayScale;
         state.crop.x = startCropX + dx;
         state.crop.y = startCropY + dy;
         updateAlignTransform();
-    });
+    }
 
-    window.addEventListener('mouseup', () => {
+    function onDragEnd() {
         isDragging = false;
-    });
+    }
+
+    alignContainer.addEventListener('mousedown', onDragStart);
+    alignContainer.addEventListener('touchstart', onDragStart, { passive: false });
+
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('touchmove', onDragMove, { passive: false });
+
+    window.addEventListener('mouseup', onDragEnd);
+    window.addEventListener('touchend', onDragEnd);
 
     // Zooming
     $('zoomSlider').addEventListener('input', e => {
