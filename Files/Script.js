@@ -4,7 +4,8 @@
     // State
     let state = {
         imgSrc: null,
-        photoW: 50.8, photoH: 50.8,
+        imgObj: null,
+        photoW: 50.8, photoH: 50.8, // in mm
         paperW: 210, paperH: 297,
         gap: 1,
         margin: 10,
@@ -13,6 +14,13 @@
         photoBorder: false,
         quantity: 0,   // 0 = auto/fill page
         dpi: 600,      // print resolution
+        mode: 'align', // 'align' | 'preview'
+        crop: {
+            x: 0, // mm
+            y: 0, // mm
+            scale: 1, // mm per pixel of original image
+            baseScale: 1 // cover scale
+        }
     };
 
     // ── Upload ────────────────────────────────────────────────────────
@@ -38,11 +46,38 @@
             state.imgSrc = e.target.result;
             $('preview-img').src = e.target.result;
             zone.classList.add('has-image');
-            $('genBtn').disabled = false;
-            updateStatus('ready');
-            renderPreview();
+            
+            // Load actual image obj
+            const img = new Image();
+            img.onload = () => {
+                state.imgObj = img;
+                $('alignImg').src = state.imgSrc;
+                resetCrop();
+                
+                $('genBtn').disabled = false;
+                $('floatingToolbar').classList.remove('hidden');
+                updateStatus('ready');
+                
+                updateView();
+            };
+            img.src = state.imgSrc;
         };
         reader.readAsDataURL(file);
+    }
+
+    function resetCrop() {
+        if (!state.imgObj) return;
+        // Cover scale
+        const scaleW = state.photoW / state.imgObj.width;
+        const scaleH = state.photoH / state.imgObj.height;
+        state.crop.baseScale = Math.max(scaleW, scaleH);
+        state.crop.scale = state.crop.baseScale;
+        
+        // Center
+        state.crop.x = (state.photoW - state.imgObj.width * state.crop.scale) / 2;
+        state.crop.y = (state.photoH - state.imgObj.height * state.crop.scale) / 2;
+        
+        $('zoomSlider').value = 1;
     }
 
     // ── Option buttons ────────────────────────────────────────────────
@@ -53,7 +88,10 @@
             state.photoW = parseFloat(btn.dataset.w);
             state.photoH = parseFloat(btn.dataset.h);
             updateMaxQtyUI();
-            if (state.imgSrc) renderPreview();
+            if (state.imgObj) {
+                resetCrop();
+                updateView();
+            }
         });
     });
 
@@ -64,7 +102,7 @@
             state.paperW = parseFloat(btn.dataset.pw);
             state.paperH = parseFloat(btn.dataset.ph);
             updateMaxQtyUI();
-            if (state.imgSrc) renderPreview();
+            if (state.imgObj && state.mode === 'preview') renderGridPreview();
         });
     });
 
@@ -80,9 +118,8 @@
         $('qtyMax').textContent = max;
         $('qtyGrid').textContent = `${cols} × ${rows}`;
         $('qtyMaxWarn').textContent = max;
-        // Update the number input's max attribute
         $('qtyInput').max = max;
-        // If a custom qty is set and exceeds new max, cap it
+        
         if (state.quantity > 0 && state.quantity > max) {
             state.quantity = max;
             $('qtyInput').value = max;
@@ -96,12 +133,12 @@
     function setQtyAuto() {
         state.quantity = 0;
         $('qtyInput').value = '';
-        $('qtyInput').placeholder = 'Auto';
+        $('qtyInput').placeholder = 'Auto Fill';
         $('qtyAutoBtn').classList.add('active');
         $('qtyDec').disabled = true;
         $('qtyInc').disabled = false;
         $('qtyWarning').classList.add('hidden');
-        if (state.imgSrc) renderPreview();
+        if (state.imgObj && state.mode === 'preview') renderGridPreview();
     }
 
     function setQtyValue(val) {
@@ -119,23 +156,20 @@
         $('qtyAutoBtn').classList.remove('active');
         $('qtyDec').disabled = val <= 1;
         $('qtyInc').disabled = val >= max;
-        if (state.imgSrc) renderPreview();
+        if (state.imgObj && state.mode === 'preview') renderGridPreview();
     }
 
     $('qtyAutoBtn').addEventListener('click', setQtyAuto);
-
     $('qtyInput').addEventListener('input', e => {
         const raw = e.target.value.trim();
         if (raw === '' || raw === '0') { setQtyAuto(); return; }
         const val = parseInt(raw);
         if (!isNaN(val)) setQtyValue(val);
     });
-
     $('qtyDec').addEventListener('click', () => {
         const cur = state.quantity > 0 ? state.quantity : getMaxQty();
         setQtyValue(cur - 1);
     });
-
     $('qtyInc').addEventListener('click', () => {
         const cur = state.quantity > 0 ? state.quantity : 1;
         setQtyValue(cur + 1);
@@ -156,7 +190,8 @@
             document.querySelectorAll('#bgColors .color-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
             state.bgColor = chip.dataset.color;
-            if (state.imgSrc) renderPreview();
+            if (state.imgObj && state.mode === 'preview') renderGridPreview();
+            if (state.imgObj && state.mode === 'align') $('alignContainer').style.backgroundColor = state.bgColor;
         });
     });
 
@@ -164,7 +199,8 @@
         document.querySelectorAll('#bgColors .color-chip').forEach(c => c.classList.remove('active'));
         e.target.closest('.color-chip').classList.add('active');
         state.bgColor = e.target.value;
-        if (state.imgSrc) renderPreview();
+        if (state.imgObj && state.mode === 'preview') renderGridPreview();
+        if (state.imgObj && state.mode === 'align') $('alignContainer').style.backgroundColor = state.bgColor;
     });
 
     // ── Sliders ───────────────────────────────────────────────────────
@@ -172,25 +208,134 @@
         state.gap = parseFloat(e.target.value);
         $('gapVal').textContent = state.gap + ' mm';
         updateMaxQtyUI();
-        if (state.imgSrc) renderPreview();
+        if (state.imgObj && state.mode === 'preview') renderGridPreview();
     });
     $('marginSlider').addEventListener('input', e => {
         state.margin = parseFloat(e.target.value);
         $('marginVal').textContent = state.margin + ' mm';
         updateMaxQtyUI();
-        if (state.imgSrc) renderPreview();
+        if (state.imgObj && state.mode === 'preview') renderGridPreview();
     });
 
     // ── Toggles ───────────────────────────────────────────────────────
     $('toggleCutlines').addEventListener('click', () => {
         state.cutlines = !state.cutlines;
         $('cutlineToggle').classList.toggle('on', state.cutlines);
-        if (state.imgSrc) renderPreview();
+        if (state.imgObj && state.mode === 'preview') renderGridPreview();
     });
     $('toggleBorder').addEventListener('click', () => {
         state.photoBorder = !state.photoBorder;
         $('borderToggle').classList.toggle('on', state.photoBorder);
-        if (state.imgSrc) renderPreview();
+        if (state.imgObj && state.mode === 'preview') renderGridPreview();
+    });
+
+    // ── Modes & Alignment View ────────────────────────────────────────
+    $('modeAlignBtn').addEventListener('click', () => {
+        state.mode = 'align';
+        $('modeAlignBtn').classList.add('active');
+        $('modePreviewBtn').classList.remove('active');
+        updateView();
+    });
+
+    $('modePreviewBtn').addEventListener('click', () => {
+        state.mode = 'preview';
+        $('modePreviewBtn').classList.add('active');
+        $('modeAlignBtn').classList.remove('active');
+        updateView();
+    });
+
+    function updateView() {
+        if (!state.imgObj) return;
+        $('emptyState').style.display = 'none';
+
+        if (state.mode === 'align') {
+            $('previewCanvas').style.display = 'none';
+            $('gridMeta').classList.add('hidden');
+            $('alignView').style.display = 'flex';
+            renderAlignView();
+        } else {
+            $('alignView').style.display = 'none';
+            $('previewCanvas').style.display = 'block';
+            $('gridMeta').classList.remove('hidden');
+            renderGridPreview();
+        }
+    }
+
+    let displayScale = 1; // px per mm
+
+    function renderAlignView() {
+        const container = $('alignContainer');
+        const imgEl = $('alignImg');
+        
+        // Define display scale (e.g., make it fit comfortably in view)
+        // Let's set height to 300px
+        displayScale = 300 / state.photoH;
+        
+        container.style.width = `${state.photoW * displayScale}px`;
+        container.style.height = `${state.photoH * displayScale}px`;
+        container.style.backgroundColor = state.bgColor;
+        
+        // Transform image based on crop
+        imgEl.style.width = `${state.imgObj.width}px`;
+        imgEl.style.height = `${state.imgObj.height}px`;
+        
+        updateAlignTransform();
+    }
+
+    function updateAlignTransform() {
+        const imgEl = $('alignImg');
+        const tx = state.crop.x * displayScale;
+        const ty = state.crop.y * displayScale;
+        const s = state.crop.scale * displayScale;
+        imgEl.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+    }
+
+    // Dragging
+    const alignContainer = $('alignContainer');
+    let isDragging = false;
+    let startX, startY, startCropX, startCropY;
+
+    alignContainer.addEventListener('mousedown', e => {
+        if (e.target.tagName.toLowerCase() === 'input') return; // ignore zoom slider clicks if it was inside
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startCropX = state.crop.x;
+        startCropY = state.crop.y;
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        const dx = (e.clientX - startX) / displayScale;
+        const dy = (e.clientY - startY) / displayScale;
+        state.crop.x = startCropX + dx;
+        state.crop.y = startCropY + dy;
+        updateAlignTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+
+    // Zooming
+    $('zoomSlider').addEventListener('input', e => {
+        if (!state.imgObj) return;
+        const zoomMult = parseFloat(e.target.value); // 0.5 to 3
+        const newScale = state.crop.baseScale * zoomMult;
+        
+        // Zoom around center of the box
+        const cx = state.photoW / 2;
+        const cy = state.photoH / 2;
+        
+        // img coord under center = (cx - crop.x) / crop.scale
+        const imgX = (cx - state.crop.x) / state.crop.scale;
+        const imgY = (cy - state.crop.y) / state.crop.scale;
+        
+        state.crop.scale = newScale;
+        state.crop.x = cx - imgX * state.crop.scale;
+        state.crop.y = cy - imgY * state.crop.scale;
+        
+        updateAlignTransform();
     });
 
     // ── Layout calc ───────────────────────────────────────────────────
@@ -203,8 +348,8 @@
     }
 
     // ── Preview render ────────────────────────────────────────────────
-    function renderPreview() {
-        if (!state.imgSrc) return;
+    function renderGridPreview() {
+        if (!state.imgObj) return;
 
         const { cols, rows } = calcLayout();
         updateMaxQtyUI();
@@ -212,20 +357,18 @@
         const total = state.quantity > 0 ? Math.min(state.quantity, maxTotal) : maxTotal;
 
         // Update chips
-        $('chipCount').innerHTML = `<span>${total}</span> photos`;
-        $('chipSize').innerHTML = `<span>${state.photoW}×${state.photoH}</span> mm`;
+        $('chipCount').innerHTML = `<i class="ri-image-2-line"></i> <span>${total} photos</span>`;
+        $('chipSize').innerHTML = `<i class="ri-ruler-line"></i> <span>${state.photoW}×${state.photoH} mm</span>`;
         const paperName = document.querySelector('#paperBtns .opt-btn.active').textContent.trim().split('\n')[0].trim();
-        $('chipPaper').innerHTML = `<span>${paperName}</span>`;
+        $('chipPaper').innerHTML = `<i class="ri-file-paper-2-line"></i> <span>${paperName}</span>`;
 
-        // Grid meta
-        $('gridMeta').classList.remove('hidden');
         $('metaLayout').textContent = `${cols} × ${rows}`;
         $('metaCount').textContent = total;
         $('metaSize').textContent = `${state.photoW} × ${state.photoH} mm`;
-        $('metaDpi').textContent = '300 dpi (PDF)';
+        $('metaDpi').textContent = `${state.dpi} dpi (PDF)`;
 
-        // Draw canvas preview (scaled)
-        const DPX = 2; // preview px per mm (72 dpi equiv)
+        // Draw canvas preview
+        const DPX = 2; // preview px per mm
         const cw = state.paperW * DPX;
         const ch = state.paperH * DPX;
         const canvas = $('previewCanvas');
@@ -233,65 +376,57 @@
         canvas.height = ch;
         const ctx = canvas.getContext('2d');
 
-        // Background
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, cw, ch);
 
-        const img = new Image();
-        img.onload = () => {
-            const pw = state.photoW * DPX;
-            const ph = state.photoH * DPX;
-            const gap = state.gap * DPX;
-            const mgn = state.margin * DPX;
+        const pw = state.photoW * DPX;
+        const ph = state.photoH * DPX;
+        const gap = state.gap * DPX;
+        const mgn = state.margin * DPX;
 
-            let placed = 0;
-            for (let r = 0; r < rows; r++) {
+        let placed = 0;
+        for (let r = 0; r < rows; r++) {
+            if (placed >= total) break;
+            for (let c = 0; c < cols; c++) {
                 if (placed >= total) break;
-                for (let c = 0; c < cols; c++) {
-                    if (placed >= total) break;
-                    placed++;
-                    const x = mgn + c * (pw + gap);
-                    const y = mgn + r * (ph + gap);
+                placed++;
+                const x = mgn + c * (pw + gap);
+                const y = mgn + r * (ph + gap);
 
-                    // BG fill
-                    ctx.fillStyle = state.bgColor;
-                    ctx.fillRect(x, y, pw, ph);
+                ctx.fillStyle = state.bgColor;
+                ctx.fillRect(x, y, pw, ph);
 
-                    // Draw image (cover crop)
-                    const imgAR = img.width / img.height;
-                    const boxAR = pw / ph;
-                    let sx, sy, sw, sh;
-                    if (imgAR > boxAR) {
-                        sh = img.height; sw = sh * boxAR;
-                        sx = (img.width - sw) / 2; sy = 0;
-                    } else {
-                        sw = img.width; sh = sw / boxAR;
-                        sx = 0; sy = (img.height - sh) / 2;
-                    }
-                    ctx.drawImage(img, sx, sy, sw, sh, x, y, pw, ph);
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(x, y, pw, ph);
+                ctx.clip();
+                
+                // Draw user-cropped image
+                const drawX = x + state.crop.x * DPX;
+                const drawY = y + state.crop.y * DPX;
+                const drawW = state.imgObj.width * state.crop.scale * DPX;
+                const drawH = state.imgObj.height * state.crop.scale * DPX;
+                
+                ctx.drawImage(state.imgObj, drawX, drawY, drawW, drawH);
+                ctx.restore();
 
-                    // Border
-                    if (state.photoBorder) {
-                        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-                        ctx.lineWidth = 0.5;
-                        ctx.strokeRect(x + 0.25, y + 0.25, pw - 0.5, ph - 0.5);
-                    }
+                // Border
+                if (state.photoBorder) {
+                    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+                    ctx.lineWidth = 0.5;
+                    ctx.strokeRect(x + 0.25, y + 0.25, pw - 0.5, ph - 0.5);
+                }
 
-                    // Cut lines
-                    if (state.cutlines) {
-                        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-                        ctx.lineWidth = 0.5;
-                        ctx.setLineDash([3, 3]);
-                        drawCutLine(ctx, x, y, pw, ph);
-                        ctx.setLineDash([]);
-                    }
+                // Cut lines
+                if (state.cutlines) {
+                    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                    ctx.lineWidth = 0.5;
+                    ctx.setLineDash([3, 3]);
+                    drawCutLine(ctx, x, y, pw, ph);
+                    ctx.setLineDash([]);
                 }
             }
-
-            $('emptyState').style.display = 'none';
-            canvas.style.display = 'block';
-        };
-        img.src = state.imgSrc;
+        }
     }
 
     function drawCutLine(ctx, x, y, pw, ph) {
@@ -311,13 +446,13 @@
         const badge = $('statusBadge');
         if (s === 'ready') {
             badge.className = 'status-badge ready';
-            badge.innerHTML = '<div class="dot"></div>Photo ready';
+            badge.innerHTML = '<div class="dot"></div><span>Ready to Gen</span>';
         } else if (s === 'generating') {
             badge.className = 'status-badge';
-            badge.innerHTML = '<div class="dot"></div>Generating PDF…';
+            badge.innerHTML = '<div class="dot"></div><span>Generating PDF…</span>';
         } else if (s === 'done') {
             badge.className = 'status-badge ready';
-            badge.innerHTML = '<div class="dot"></div>PDF ready to download';
+            badge.innerHTML = '<div class="dot"></div><span>PDF Ready</span>';
         }
     }
 
@@ -325,28 +460,23 @@
     $('genBtn').addEventListener('click', generatePDF);
 
     async function generatePDF() {
-        if (!state.imgSrc) return;
+        if (!state.imgObj) return;
         updateStatus('generating');
         $('genBtn').disabled = true;
 
-        await new Promise(r => setTimeout(r, 30)); // let UI update
+        await new Promise(r => setTimeout(r, 30));
 
         const { jsPDF } = window.jspdf;
         const orientation = state.paperH >= state.paperW ? 'portrait' : 'landscape';
         const pdf = new jsPDF({ orientation, unit: 'mm', format: [state.paperW, state.paperH] });
 
         const { cols, rows } = calcLayout();
-        const DPI = state.dpi;           // 300 or 600
+        const DPI = state.dpi;
         const MM_TO_PX = DPI / 25.4;
 
         const pw_px = Math.round(state.photoW * MM_TO_PX);
         const ph_px = Math.round(state.photoH * MM_TO_PX);
 
-        const img = new Image();
-        img.src = state.imgSrc;
-        await new Promise(r => { img.onload = r; if (img.complete) r(); });
-
-        // Build high-res photo tile on offscreen canvas
         const off = $('offscreen');
         off.width = pw_px;
         off.height = ph_px;
@@ -355,17 +485,17 @@
         octx.fillStyle = state.bgColor;
         octx.fillRect(0, 0, pw_px, ph_px);
 
-        const imgAR = img.width / img.height;
-        const boxAR = pw_px / ph_px;
-        let sx, sy, sw, sh;
-        if (imgAR > boxAR) {
-            sh = img.height; sw = sh * boxAR;
-            sx = (img.width - sw) / 2; sy = 0;
-        } else {
-            sw = img.width; sh = sw / boxAR;
-            sx = 0; sy = (img.height - sh) / 2;
-        }
-        octx.drawImage(img, sx, sy, sw, sh, 0, 0, pw_px, ph_px);
+        octx.save();
+        octx.beginPath();
+        octx.rect(0, 0, pw_px, ph_px);
+        octx.clip();
+        
+        const drawX = state.crop.x * MM_TO_PX;
+        const drawY = state.crop.y * MM_TO_PX;
+        const drawW = state.imgObj.width * state.crop.scale * MM_TO_PX;
+        const drawH = state.imgObj.height * state.crop.scale * MM_TO_PX;
+        octx.drawImage(state.imgObj, drawX, drawY, drawW, drawH);
+        octx.restore();
 
         if (state.photoBorder) {
             octx.strokeStyle = 'rgba(0,0,0,0.2)';
@@ -373,7 +503,6 @@
             octx.strokeRect(1, 1, pw_px - 2, ph_px - 2);
         }
 
-        // Encode tile: PNG (lossless) for Ultra HD, JPEG high-quality for Standard
         const usePNG = state.dpi >= 600;
         const tileData = usePNG
             ? off.toDataURL('image/png')
@@ -383,7 +512,6 @@
         const maxTotalPdf = cols * rows;
         const totalPdf = state.quantity > 0 ? Math.min(state.quantity, maxTotalPdf) : maxTotalPdf;
 
-        // Place tiles
         let placedPdf = 0;
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
@@ -395,7 +523,6 @@
             }
         }
 
-        // Cut lines
         if (state.cutlines) {
             pdf.setDrawColor(150, 150, 150);
             pdf.setLineWidth(0.1);
@@ -409,13 +536,9 @@
                     const x = state.margin + c * (state.photoW + state.gap);
                     const y = state.margin + r * (state.photoH + state.gap);
                     const ext = 2;
-                    // top
                     pdf.line(x - ext, y, x + state.photoW + ext, y);
-                    // bottom
                     pdf.line(x - ext, y + state.photoH, x + state.photoW + ext, y + state.photoH);
-                    // left
                     pdf.line(x, y - ext, x, y + state.photoH + ext);
-                    // right
                     pdf.line(x + state.photoW, y - ext, x + state.photoW, y + state.photoH + ext);
                 }
             }
@@ -429,8 +552,25 @@
         $('genBtn').disabled = false;
         updateStatus('done');
 
-        // Auto-trigger download
         dl.click();
+    }
+
+    // ── Mobile Tabs ───────────────────────────────────────────────────
+    const tabPreviewBtn = $('tabPreviewBtn');
+    const tabSettingsBtn = $('tabSettingsBtn');
+    
+    if (tabPreviewBtn && tabSettingsBtn) {
+        tabPreviewBtn.addEventListener('click', () => {
+            document.body.classList.remove('mobile-show-settings');
+            tabPreviewBtn.classList.add('active');
+            tabSettingsBtn.classList.remove('active');
+        });
+
+        tabSettingsBtn.addEventListener('click', () => {
+            document.body.classList.add('mobile-show-settings');
+            tabSettingsBtn.classList.add('active');
+            tabPreviewBtn.classList.remove('active');
+        });
     }
 
     // Init

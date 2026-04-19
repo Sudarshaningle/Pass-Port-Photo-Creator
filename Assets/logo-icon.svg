@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- 135 degree linear gradient -->
+    <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4338ca" />
+    </linearGradient>
+    
+    <!-- Glow filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#6366f1" flood-opacity="0.5"/>
+    </filter>
+
+    <!-- Custom Aperture Mask -->
+    <mask id="aperture-mask">
+      <!-- White circle base (everything visible) -->
+      <circle cx="32" cy="32" r="12" fill="white" />
+      
+      <!-- Black elements (hidden/cut out) -->
+      <g transform="translate(32, 32)">
+        <!-- Central hexagon hole -->
+        <polygon points="3.6,0 1.8,3.117 -1.8,3.117 -3.6,0 -1.8,-3.117 1.8,-3.117" fill="black" stroke="black" stroke-width="1.8" stroke-linejoin="miter" />
+        
+        <!-- 6 Thin gaps slicing the wedges -->
+        <g id="gap-line">
+          <line x1="3.6" y1="0" x2="13.6" y2="17.32" stroke="black" stroke-width="1.8" />
+        </g>
+        <use href="#gap-line" transform="rotate(60)" />
+        <use href="#gap-line" transform="rotate(120)" />
+        <use href="#gap-line" transform="rotate(180)" />
+        <use href="#gap-line" transform="rotate(240)" />
+        <use href="#gap-line" transform="rotate(300)" />
+      </g>
+    </mask>
+  </defs>
+
+  <!-- Background Box (40x40 placed at 12,12 gives a 64x64 canvas with 12px padding for shadow) -->
+  <rect x="12" y="12" width="40" height="40" rx="10" fill="url(#logo-grad)" filter="url(#glow)"/>
+
+  <!-- Custom geometric aperture icon perfectly centered -->
+  <circle cx="32" cy="32" r="12" fill="#ffffff" mask="url(#aperture-mask)" />
+</svg>

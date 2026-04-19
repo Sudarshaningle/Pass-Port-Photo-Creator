@@ -1,194 +1,335 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>pic.io — Passport Photo Studio</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="Files/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pic.io — AI-Powered Passport Photo Studio</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="Files/style.css">
 </head>
-<body>
+<body class="dark-theme">
+  <!-- Theme Switcher -->
+  <button id="themeToggle" class="theme-toggle" title="Toggle Dark/Light Mode">
+    <i class="ri-sun-line light-icon"></i>
+    <i class="ri-moon-clear-line dark-icon"></i>
+  </button>
 
-<header>
-  <div class="logo">
-    <span class="logo-dot"></span>
-    pic<span>.</span>io
+  <div class="app-layout">
+    <!-- Sidebar Controls -->
+    <aside class="sidebar">
+      <header class="sidebar-header">
+        <div class="logo">
+          <img src="Assets/logo-icon.svg" alt="pic.io" class="logo-icon" />
+          <div class="logo-text">
+            <h1>pic<span>.</span>io</h1>
+            <p class="tagline">Premium Photo Studio</p>
+          </div>
+        </div>
+      </header>
+
+      <div class="sidebar-content">
+        <!-- Photo Upload -->
+        <div class="control-group">
+          <div class="group-title">
+            <i class="ri-image-add-line"></i>
+            <span>Upload Photo</span>
+          </div>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept="image/*" title="Upload Photo">
+            <div class="upload-placeholder">
+              <div class="upload-icon-wrap">
+                <i class="ri-upload-cloud-2-line"></i>
+              </div>
+              <p class="upload-main-text">Drag & drop image</p>
+              <p class="upload-sub-text">or click to browse (JPG, PNG)</p>
+            </div>
+            <img id="preview-img" alt="Uploaded photo preview">
+            <div class="photo-replace">
+              <i class="ri-refresh-line"></i> Replace Photo
+            </div>
+          </div>
+        </div>
+
+        <!-- Document Standard -->
+        <div class="control-group">
+          <div class="group-title">
+            <i class="ri-global-line"></i>
+            <span>Document Standard</span>
+          </div>
+          <div class="grid-2col" id="standardBtns">
+            <button class="opt-btn active" data-w="50.8" data-h="50.8">
+              <span class="opt-main">US Passport</span>
+              <span class="opt-sub">2×2 in</span>
+            </button>
+            <button class="opt-btn" data-w="35" data-h="45">
+              <span class="opt-main">EU / UK</span>
+              <span class="opt-sub">35×45 mm</span>
+            </button>
+            <button class="opt-btn" data-w="35" data-h="45">
+              <span class="opt-main">India</span>
+              <span class="opt-sub">35×45 mm</span>
+            </button>
+            <button class="opt-btn" data-w="33" data-h="48">
+              <span class="opt-main">China</span>
+              <span class="opt-sub">33×48 mm</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Paper Size -->
+        <div class="control-group">
+          <div class="group-title">
+            <i class="ri-file-paper-2-line"></i>
+            <span>Paper Size</span>
+          </div>
+          <div class="grid-2col" id="paperBtns">
+            <button class="opt-btn active" data-pw="210" data-ph="297">A4
+              <span class="opt-sub">210×297 mm</span>
+            </button>
+            <button class="opt-btn" data-pw="101.6" data-ph="152.4">4×6 in
+              <span class="opt-sub">102×152 mm</span>
+            </button>
+            <button class="opt-btn" data-pw="215.9" data-ph="279.4">Letter
+              <span class="opt-sub">8.5×11 in</span>
+            </button>
+            <button class="opt-btn" data-pw="148" data-ph="210">A5
+              <span class="opt-sub">148×210 mm</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quantity & Grid -->
+        <div class="control-group">
+          <div class="group-title flex-between">
+            <div>
+              <i class="ri-layout-grid-line"></i>
+              <span>Quantity</span>
+            </div>
+            <span class="qty-info" id="qtyMeta">Max: <strong id="qtyMax">—</strong> (<span id="qtyGrid">—</span>)</span>
+          </div>
+          <div class="qty-row">
+            <div class="stepper">
+              <button class="stepper-btn" id="qtyDec" disabled><i class="ri-subtract-line"></i></button>
+              <input type="number" id="qtyInput" min="1" placeholder="Auto Fill">
+              <button class="stepper-btn" id="qtyInc"><i class="ri-add-line"></i></button>
+            </div>
+            <button class="qty-auto-btn active" id="qtyAutoBtn">Auto</button>
+          </div>
+          <div class="qty-warning hidden" id="qtyWarning">
+            <i class="ri-error-warning-line"></i> Capped at <span id="qtyMaxWarn">—</span> photos
+          </div>
+        </div>
+
+        <!-- Print Quality -->
+        <div class="control-group">
+          <div class="group-title">
+            <i class="ri-printer-line"></i>
+            <span>Print Quality</span>
+          </div>
+          <div class="grid-2col" id="dpiBtns">
+            <button class="opt-btn" data-dpi="300">
+              <span class="opt-main">Standard</span>
+              <span class="opt-sub">300 DPI</span>
+            </button>
+            <button class="opt-btn active" data-dpi="600">
+              <span class="opt-main">Ultra HD</span>
+              <span class="opt-sub">600 DPI (PNG)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Background Color -->
+        <div class="control-group">
+          <div class="group-title">
+            <i class="ri-palette-line"></i>
+            <span>Background Color</span>
+          </div>
+          <div class="color-row" id="bgColors">
+            <div class="color-chip active" data-color="#ffffff" style="background:#ffffff;" title="White"></div>
+            <div class="color-chip" data-color="#f0f4f8" style="background:#f0f4f8;" title="Off-white"></div>
+            <div class="color-chip" data-color="#a8c4e0" style="background:#a8c4e0;" title="Light Blue"></div>
+            <div class="color-chip" data-color="#dce8d0" style="background:#dce8d0;" title="Light Green"></div>
+            <div class="color-chip" data-color="#f5e6c8" style="background:#f5e6c8;" title="Warm Cream"></div>
+            <div class="color-chip custom-picker" title="Custom Color">
+              <i class="ri-add-line"></i>
+              <input type="color" id="customBgColor" value="#ffffff">
+            </div>
+          </div>
+        </div>
+
+        <!-- Layout Spacing -->
+        <div class="control-group">
+          <div class="group-title">
+            <i class="ri-space"></i>
+            <span>Layout Spacing</span>
+          </div>
+          <div class="slider-container">
+            <div class="slider-header">
+              <span>Photo Gap</span>
+              <span class="slider-value" id="gapVal">3 mm</span>
+            </div>
+            <input type="range" class="styled-slider" id="gapSlider" min="0" max="5" value="1" step="0.5">
+          </div>
+          <div class="slider-container mt-3">
+            <div class="slider-header">
+              <span>Page Margin</span>
+              <span class="slider-value" id="marginVal">10 mm</span>
+            </div>
+            <input type="range" class="styled-slider" id="marginSlider" min="5" max="25" value="10" step="1">
+          </div>
+        </div>
+
+        <!-- Extra Options -->
+        <div class="control-group">
+          <div class="group-title">
+            <i class="ri-settings-3-line"></i>
+            <span>Print Guides</span>
+          </div>
+          <div class="toggle-row" id="toggleCutlines">
+            <div class="toggle-label">
+              <span class="toggle-main">Cut Lines</span>
+              <span class="toggle-sub">Show trim markers</span>
+            </div>
+            <div class="toggle-switch on" id="cutlineToggle">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="toggle-row" id="toggleBorder">
+            <div class="toggle-label">
+              <span class="toggle-main">Photo Border</span>
+              <span class="toggle-sub">Add thin outline</span>
+            </div>
+            <div class="toggle-switch" id="borderToggle">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End sidebar-content -->
+    </aside>
+
+    <!-- Main Canvas Area -->
+    <main class="main-workspace">
+      <div class="workspace-topbar">
+        <div class="status-badge" id="statusBadge">
+          <div class="dot"></div>
+          <span>Awaiting Photo</span>
+        </div>
+        <div class="info-pills" id="infoChips">
+          <div class="pill"><i class="ri-image-2-line"></i> <span id="chipCount">0 photos</span></div>
+          <div class="pill"><i class="ri-ruler-line"></i> <span id="chipSize">0×0 mm</span></div>
+          <div class="pill"><i class="ri-file-paper-2-line"></i> <span id="chipPaper">A4</span></div>
+        </div>
+      </div>
+
+      <div class="canvas-wrapper">
+        <div class="canvas-stage" id="canvasWrap">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon"><i class="ri-camera-lens-line"></i></div>
+            <h2>Start Your Session</h2>
+            <p>Upload a photo from the sidebar to preview and generate your professional passport layout.</p>
+          </div>
+          
+          <!-- Grid Preview -->
+          <canvas id="previewCanvas" style="display:none;"></canvas>
+
+          <!-- Alignment View -->
+          <div id="alignView" class="align-view" style="display:none;">
+            <div class="align-container-wrap">
+              <div class="align-container" id="alignContainer">
+                <img id="alignImg" src="" alt="Align">
+                <div class="face-template">
+                  <div class="head-oval"></div>
+                  <div class="shoulders-curve"></div>
+                  <div class="center-line"></div>
+                </div>
+              </div>
+            </div>
+            <div class="zoom-controls">
+              <i class="ri-zoom-out-line"></i>
+              <input type="range" class="styled-slider" id="zoomSlider" min="0.5" max="3" step="0.02" value="1">
+              <i class="ri-zoom-in-line"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Toolbar -->
+      <div class="floating-toolbar hidden" id="floatingToolbar">
+        <div class="mode-switch">
+          <button class="mode-btn active" id="modeAlignBtn"><i class="ri-crop-line"></i> Alignment</button>
+          <button class="mode-btn" id="modePreviewBtn"><i class="ri-grid-fill"></i> PDF Preview</button>
+        </div>
+        <div class="toolbar-actions">
+          <button class="action-btn primary" id="genBtn" disabled><i class="ri-magic-line"></i> Generate</button>
+          <a class="action-btn secondary hidden" id="downloadLink" href="#" download="passport-photos.pdf"><i class="ri-download-2-line"></i> Download</a>
+        </div>
+      </div>
+
+      <div class="workspace-bottombar hidden" id="gridMeta">
+        <div class="meta-stat">
+          <span class="meta-label">Grid Layout</span>
+          <span class="meta-val" id="metaLayout">—</span>
+        </div>
+        <div class="meta-stat">
+          <span class="meta-label">Total Photos</span>
+          <span class="meta-val" id="metaCount">—</span>
+        </div>
+        <div class="meta-stat">
+          <span class="meta-label">Photo Size</span>
+          <span class="meta-val" id="metaSize">—</span>
+        </div>
+        <div class="meta-stat">
+          <span class="meta-label">Resolution</span>
+          <span class="meta-val" id="metaDpi">—</span>
+        </div>
+      </div>
+    </main>
   </div>
-  <div class="tagline">Passport Photo Studio</div>
-</header>
 
-<div class="main">
-  <!-- Sidebar -->
-  <aside class="sidebar">
+  <canvas id="offscreen" style="display:none;"></canvas>
 
-    <!-- Upload -->
-    <div>
-      <div class="section-label">Photo</div>
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept="image/*">
-        <div class="upload-placeholder">
-          <div class="upload-icon">⬛</div>
-          <div class="upload-text">
-            <strong>Drop photo here</strong>
-            Click to browse · JPG, PNG, WEBP
-          </div>
-        </div>
-        <img id="preview-img" alt="Preview">
-        <div class="photo-replace">↺ Replace Photo</div>
-      </div>
-    </div>
-
-    <!-- Photo Standard -->
-    <div>
-      <div class="section-label">Standard</div>
-      <div class="control-group">
-        <div class="select-grid" id="standardBtns">
-          <button class="opt-btn active" data-w="50.8" data-h="50.8">US Passport<span class="opt-size">2×2 in</span></button>
-          <button class="opt-btn" data-w="35" data-h="45">EU / UK<span class="opt-size">35×45 mm</span></button>
-          <button class="opt-btn" data-w="35" data-h="45">India<span class="opt-size">35×45 mm</span></button>
-          <button class="opt-btn" data-w="33" data-h="48">China<span class="opt-size">33×48 mm</span></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quantity -->
-    <div>
-      <div class="section-label">Quantity</div>
-      <div class="control-group" style="gap:10px">
-        <div class="qty-row">
-          <div class="qty-input-wrap">
-            <button class="qty-adj" id="qtyDec" disabled>−</button>
-            <input type="number" id="qtyInput" min="1" placeholder="Auto" title="Number of photos">
-            <button class="qty-adj" id="qtyInc">+</button>
-          </div>
-          <button class="qty-auto-btn active" id="qtyAutoBtn">Auto</button>
-        </div>
-        <div class="qty-meta" id="qtyMeta">Max on this page: <strong id="qtyMax">—</strong> &nbsp;(<span id="qtyGrid">—</span>)</div>
-        <div class="qty-warning hidden" id="qtyWarning">⚠ Only <span id="qtyMaxWarn">—</span> photos fit — input capped</div>
-      </div>
-    </div>
-
-    <!-- Print Quality -->
-    <div>
-      <div class="section-label">Print Quality</div>
-      <div class="control-group">
-        <div class="select-grid" id="dpiBtns">
-          <button class="opt-btn" data-dpi="300">Standard<span class="opt-size">300 DPI</span></button>
-          <button class="opt-btn active" data-dpi="600">Ultra HD<span class="opt-size">600 DPI · PNG</span></button>
-        </div>
-        <div class="quality-hint">Ultra HD renders at <b>600 DPI lossless PNG</b> — no compression artefacts. Ideal for fibre, silver-halide &amp; fine-art paper.</div>
-      </div>
-    </div>
-
-    <!-- Paper Size -->
-    <div>
-      <div class="section-label">Paper</div>
-      <div class="control-group">
-        <div class="select-grid" id="paperBtns">
-          <button class="opt-btn active" data-pw="210" data-ph="297">A4<span class="opt-size">210×297 mm</span></button>
-          <button class="opt-btn" data-pw="101.6" data-ph="152.4">4×6 in<span class="opt-size">102×152 mm</span></button>
-          <button class="opt-btn" data-pw="215.9" data-ph="279.4">Letter<span class="opt-size">8.5×11 in</span></button>
-          <button class="opt-btn" data-pw="148" data-ph="210">A5<span class="opt-size">148×210 mm</span></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Background -->
-    <div>
-      <div class="section-label">Background</div>
-      <div class="control-group">
-        <div class="color-row" id="bgColors">
-          <div class="color-chip active" data-color="#ffffff" style="background:#ffffff;" title="White"></div>
-          <div class="color-chip" data-color="#f0f4f8" style="background:#f0f4f8;" title="Off-white"></div>
-          <div class="color-chip" data-color="#a8c4e0" style="background:#a8c4e0;" title="Light Blue"></div>
-          <div class="color-chip" data-color="#dce8d0" style="background:#dce8d0;" title="Light Green"></div>
-          <div class="color-chip" data-color="#f5e6c8" style="background:#f5e6c8;" title="Warm Cream"></div>
-          <div class="color-chip" title="Custom">＋<input type="color" id="customBgColor" value="#ffffff"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Spacing -->
-    <div>
-      <div class="section-label">Spacing</div>
-      <div class="control-group">
-        <div class="control-label">Gap between photos</div>
-        <div class="slider-row">
-          <input type="range" id="gapSlider" min="0" max="5" value="1" step="0.5">
-          <span class="slider-val" id="gapVal">3 mm</span>
-        </div>
-        <div class="control-label" style="margin-top:8px">Page margin</div>
-        <div class="slider-row">
-          <input type="range" id="marginSlider" min="5" max="25" value="10" step="1">
-          <span class="slider-val" id="marginVal">10 mm</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Options -->
-    <div>
-      <div class="section-label">Options</div>
-      <div class="control-group" style="gap:12px">
-        <div class="toggle-row" id="toggleCutlines">
-          <span class="toggle-label">Cut lines / guides</span>
-          <div class="toggle on" id="cutlineToggle"></div>
-        </div>
-        <div class="toggle-row" id="toggleBorder">
-          <span class="toggle-label">Thin border on photos</span>
-          <div class="toggle" id="borderToggle"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sep"></div>
-
-    <!-- Actions -->
-    <button class="gen-btn" id="genBtn" disabled>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 12l-4 4-4-4M12 16V4"/></svg>
-      Generate PDF
+  <!-- Mobile Tab Navigation -->
+  <div class="mobile-tab-bar" id="mobileTabBar">
+    <button class="mobile-tab-btn active" id="tabPreviewBtn">
+      <i class="ri-image-line"></i>
+      <span>Preview</span>
     </button>
-    <a class="download-btn hidden" id="downloadLink" href="#" download="passport-photos.pdf">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 12l-4 4-4-4M12 16V4"/></svg>
-      Download PDF
-    </a>
+    <button class="mobile-tab-btn" id="tabSettingsBtn">
+      <i class="ri-settings-4-line"></i>
+      <span>Settings</span>
+    </button>
+  </div>
 
-  </aside>
+  <script src="Files/Script.js"></script>
+  <script>
+    // Theme Switcher Initialization
+    const themeBtn = document.getElementById('themeToggle');
+    const rootBody = document.body;
+    
+    // Check local storage or system preference
+    const saved = localStorage.getItem('picio-theme');
+    if (saved) {
+      rootBody.className = saved;
+    } else {
+      // Default to dark theme as requested for "best UI" vibe
+      rootBody.className = 'dark-theme';
+    }
 
-  <!-- Main Preview -->
-  <main class="preview-area">
-    <div class="preview-header">
-      <div class="status-badge" id="statusBadge">
-        <div class="dot"></div>
-        Waiting for photo
-      </div>
-      <div class="info-chips" id="infoChips">
-        <div class="chip" id="chipCount"></div>
-        <div class="chip" id="chipSize"></div>
-        <div class="chip" id="chipPaper"></div>
-      </div>
-    </div>
-
-    <div class="canvas-wrap" id="canvasWrap">
-      <div class="empty-state" id="emptyState">
-        <div class="big-icon">🪪</div>
-        <p><strong>No photo uploaded yet</strong>Upload a passport photo on the left, then configure your settings and hit Generate PDF.</p>
-      </div>
-      <canvas id="previewCanvas" style="display:none;"></canvas>
-    </div>
-
-    <div class="grid-meta hidden" id="gridMeta">
-      <div>Layout: <span id="metaLayout">—</span></div>
-      <div>Photos: <span id="metaCount">—</span></div>
-      <div>Photo size: <span id="metaSize">—</span></div>
-      <div>DPI: <span id="metaDpi">—</span></div>
-    </div>
-
-  </main>
-</div>
-
-<canvas id="offscreen" style="display:none;"></canvas>
-
-<script src="Files/Script.js"></script>
+    themeBtn.addEventListener('click', () => {
+      if (rootBody.classList.contains('dark-theme')) {
+        rootBody.classList.remove('dark-theme');
+        rootBody.classList.add('light-theme');
+        localStorage.setItem('picio-theme', 'light-theme');
+      } else {
+        rootBody.classList.remove('light-theme');
+        rootBody.classList.add('dark-theme');
+        localStorage.setItem('picio-theme', 'dark-theme');
+      }
+    });
+  </script>
 </body>
 </html>
