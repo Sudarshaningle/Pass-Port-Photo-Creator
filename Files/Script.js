@@ -46,18 +46,18 @@
             state.imgSrc = e.target.result;
             $('preview-img').src = e.target.result;
             zone.classList.add('has-image');
-            
+
             // Load actual image obj
             const img = new Image();
             img.onload = () => {
                 state.imgObj = img;
                 $('alignImg').src = state.imgSrc;
                 resetCrop();
-                
+
                 $('genBtn').disabled = false;
                 $('floatingToolbar').classList.remove('hidden');
                 updateStatus('ready');
-                
+
                 updateView();
             };
             img.onerror = () => {
@@ -80,11 +80,11 @@
         const scaleH = state.photoH / state.imgObj.height;
         state.crop.baseScale = Math.max(scaleW, scaleH);
         state.crop.scale = state.crop.baseScale;
-        
+
         // Center
         state.crop.x = (state.photoW - state.imgObj.width * state.crop.scale) / 2;
         state.crop.y = (state.photoH - state.imgObj.height * state.crop.scale) / 2;
-        
+
         $('zoomSlider').value = 1;
     }
 
@@ -127,7 +127,7 @@
         $('qtyGrid').textContent = `${cols} × ${rows}`;
         $('qtyMaxWarn').textContent = max;
         $('qtyInput').max = max;
-        
+
         if (state.quantity > 0 && state.quantity > max) {
             state.quantity = max;
             $('qtyInput').value = max;
@@ -274,19 +274,19 @@
     function renderAlignView() {
         const container = $('alignContainer');
         const imgEl = $('alignImg');
-        
+
         // Define display scale (e.g., make it fit comfortably in view)
         // Let's set height to 300px
         displayScale = 300 / state.photoH;
-        
+
         container.style.width = `${state.photoW * displayScale}px`;
         container.style.height = `${state.photoH * displayScale}px`;
         container.style.backgroundColor = state.bgColor;
-        
+
         // Transform image based on crop
         imgEl.style.width = `${state.imgObj.width}px`;
         imgEl.style.height = `${state.imgObj.height}px`;
-        
+
         updateAlignTransform();
     }
 
@@ -347,19 +347,19 @@
         if (!state.imgObj) return;
         const zoomMult = parseFloat(e.target.value); // 0.5 to 3
         const newScale = state.crop.baseScale * zoomMult;
-        
+
         // Zoom around center of the box
         const cx = state.photoW / 2;
         const cy = state.photoH / 2;
-        
+
         // img coord under center = (cx - crop.x) / crop.scale
         const imgX = (cx - state.crop.x) / state.crop.scale;
         const imgY = (cy - state.crop.y) / state.crop.scale;
-        
+
         state.crop.scale = newScale;
         state.crop.x = cx - imgX * state.crop.scale;
         state.crop.y = cy - imgY * state.crop.scale;
-        
+
         updateAlignTransform();
     });
 
@@ -425,13 +425,13 @@
                 ctx.beginPath();
                 ctx.rect(x, y, pw, ph);
                 ctx.clip();
-                
+
                 // Draw user-cropped image
                 const drawX = x + state.crop.x * DPX;
                 const drawY = y + state.crop.y * DPX;
                 const drawW = state.imgObj.width * state.crop.scale * DPX;
                 const drawH = state.imgObj.height * state.crop.scale * DPX;
-                
+
                 ctx.drawImage(state.imgObj, drawX, drawY, drawW, drawH);
                 ctx.restore();
 
@@ -514,7 +514,7 @@
         octx.beginPath();
         octx.rect(0, 0, pw_px, ph_px);
         octx.clip();
-        
+
         const drawX = state.crop.x * MM_TO_PX;
         const drawY = state.crop.y * MM_TO_PX;
         const drawW = state.imgObj.width * state.crop.scale * MM_TO_PX;
@@ -569,21 +569,34 @@
             }
         }
 
-        const pdfBlob = pdf.output('blob');
-        const url = URL.createObjectURL(pdfBlob);
-        const dl = $('downloadLink');
-        dl.href = url;
-        dl.classList.remove('hidden');
+        const base64Pdf = pdf.output("datauristring");
+
+        // remove "data:application/pdf;base64,"
+        const pureBase64 = base64Pdf.split(",")[1];
+
+        // if Android WebView
+        if (window.Android) {
+            Android.saveBase64Pdf(pureBase64);
+        }
+        // if normal browser
+        else {
+            const pdfBlob = pdf.output("blob");
+            const url = URL.createObjectURL(pdfBlob);
+
+            const dl = $('downloadLink');
+            dl.href = url;
+            dl.classList.remove('hidden');
+            dl.click();
+        }
+
         $('genBtn').disabled = false;
         updateStatus('done');
-
-        dl.click();
     }
 
     // ── Mobile Tabs ───────────────────────────────────────────────────
     const tabPreviewBtn = $('tabPreviewBtn');
     const tabSettingsBtn = $('tabSettingsBtn');
-    
+
     if (tabPreviewBtn && tabSettingsBtn) {
         tabPreviewBtn.addEventListener('click', () => {
             document.body.classList.remove('mobile-show-settings');
